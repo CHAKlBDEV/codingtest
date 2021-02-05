@@ -6,4 +6,6 @@ export default interface UserInterface extends Model {
 	points: number;
 	registered: Date;
 	lastClaim: Date;
+	lastGame: Date;
+	gamesPlayedLastHour: number;
 }

@@ -3,13 +3,12 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import morgan from 'morgan';
 import jwt from 'jsonwebtoken';
-import { Op } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 import dayjs from 'dayjs';
 
-import { User, Game } from './models/models';
+import sequelize from './config/db.config';
+import { User } from './models/models';
 import auth from './middlewares/auth';
-import Leader from './types/leader';
-import LeaderboardResponseObject from './types/leaderResponse';
 
 const app = express();
 
@@ -54,22 +53,28 @@ app.get('/me', auth(), async (req, res) => {
 });
 
 app.post('/game/play', auth(), async (req, res) => {
-	const startDate = dayjs().set('milliseconds', 0).set('seconds', 0).set('minutes', 0).toDate();
-	const endDate = dayjs(startDate).add(1, 'hour').toDate();
 	try {
-		const gamesLastHour = await Game.count({ where: { user: req.userObject.id, date: { [Op.between]: [startDate, endDate] } } });
-		if (gamesLastHour >= 5) {
-			return res.status(401).json({ message: 'limit_exceeded' });
+		let user = await User.findByPk(req.userObject?.id);
+
+		const lastGameHourSig = dayjs(user?.lastGame || 0).format('YYYY-MM-DD-HH');
+		const currentHourSig = dayjs().format('YYYY-MM-DD-HH');
+
+		if (lastGameHourSig === currentHourSig) {
+			if (user?.gamesPlayedLastHour && user?.gamesPlayedLastHour >= 5) {
+				return res.status(401).json({ message: 'limit_exceeded' });
+			} else {
+				await User.increment('gamesPlayedLastHour', { by: 1, where: { id: req.userObject.id } });
+			}
+		} else {
+			await User.update({ gamesPlayedLastHour: 1 }, { where: { id: req.userObject.id } });
 		}
 
 		const pointsToAdd = Math.floor(Math.random() * 100);
 
 		await User.increment('points', { by: pointsToAdd, where: { id: req.userObject.id } });
-		await Game.create({ user: req.userObject.id });
+		await User.update({ lastGame: Date.now() }, { where: { id: req.userObject.id } });
 
-		const user = await User.findByPk(req.userObject.id);
-
-		return res.status(200).json({ points_added: pointsToAdd, points_total: user?.points });
+		return res.status(200).json({ points_added: pointsToAdd, points_total: user?.points as number + pointsToAdd });
 	} catch (e) {
 		console.log('[ERROR][/game/play] ', e);
 		return res.status(500).json({ message: 'server_error' });
@@ -98,19 +103,20 @@ app.post('/game/claim_bonus', auth(), async (req, res) => {
 
 app.get('/leaderboard', auth(false), async (req, res) => {
 	try {
-		let leaders = await User.findAll({ order: [['points', 'DESC']] });
-
-		let responseObject = new LeaderboardResponseObject();
-
-		if (req.userObject) {
-			responseObject.current_user_place = leaders.findIndex((value) => value.id == req.userObject.id) + 1;
-		}
-
-		leaders.forEach((user, index) => {
-			responseObject.leaders.push(new Leader(user.name, index + 1, user.points));
+		let leaders = await sequelize.query('SELECT name, points, ROW_NUMBER() OVER (ORDER BY points DESC) as place FROM users LIMIT 10', {
+			type: QueryTypes.SELECT,
 		});
 
-		if (responseObject.leaders.length > 10) responseObject.leaders.length = 10;
+		let responseObject: any = { leaders };
+
+		if (req.userObject) {
+			let user = await User.findByPk(req.userObject?.id);
+			let getUserRank = await sequelize.query('SELECT COUNT(*) + 1 AS rank FROM users WHERE points > :points', {
+				replacements: { points: user?.points },
+				type: QueryTypes.SELECT
+			});
+			responseObject.current_user_place = (getUserRank as any)[0].rank;
+		}
 
 		return res.status(200).json(responseObject);
 	} catch (e) {

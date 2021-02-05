@@ -1,6 +1,5 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/db.config';
-import GameInterface from '../types/game.interface';
 import UserInterface from '../types/user.interface';
 
 export const User = sequelize.define<UserInterface>('user', {
@@ -26,22 +25,12 @@ export const User = sequelize.define<UserInterface>('user', {
 		type: DataTypes.DATE,
 		defaultValue: DataTypes.NOW,
 	},
-});
-
-export const Game = sequelize.define<GameInterface>('game', {
-	id: {
-		type: DataTypes.UUID,
-		defaultValue: DataTypes.UUIDV4,
-		allowNull: false,
-		primaryKey: true,
-	},
-	user: {
-		type: DataTypes.STRING,
-		allowNull: false,
-	},
-	date: {
+	lastGame: {
 		type: DataTypes.DATE,
-		defaultValue: DataTypes.NOW,
+	},
+	gamesPlayedLastHour: {
+		type: DataTypes.INTEGER,
+		defaultValue: 0,
 	},
 });
 
