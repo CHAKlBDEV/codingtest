@@ -1,8 +1,7 @@
 import express from 'express';
 import { validationResult } from 'express-validator';
-import jwt from 'jsonwebtoken';
 
-import { User } from '../models/models';
+import UserService from '../services/user';
 
 export const register = async (req: express.Request, res: express.Response) => {
 	const errors = validationResult(req);
@@ -11,26 +10,23 @@ export const register = async (req: express.Request, res: express.Response) => {
 	}
 	const { name } = req.body;
 	try {
-		const usersWithSameName = (await User.count({ where: { name } })) != 0;
-		if (usersWithSameName) {
-			return res.status(409).json({ message: 'name_already_taken' });
-		}
-
-		let user = await User.create({ name });
-
-		const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || '', { expiresIn: '1d' });
-
-		return res.status(200).json({ message: 'user_registred_successfully', token });
+        let response = await UserService.register(name);
+        return res.status(200).json({message: 'user_registered_successfully', ...response});
 	} catch (e) {
-		console.log('[ERROR][/register] ', e);
-		return res.status(500).json({ message: 'server_error' });
+        console.log('[ERROR][/register] ', e);
+        switch (e) {
+            case 'name_already_taken':
+                return res.status(409).json({ message: e });
+            default:
+                return res.status(500).json({ message: 'server_error' });
+        }
 	}
 };
 
 export const me = async (req: express.Request, res: express.Response) => {
 	try {
-		const user = await User.findOne({ where: { id: req.userObject.id }, attributes: ['name', 'points'] });
-		return res.status(200).json({ name: user?.name, points: user?.points });
+		let response = await UserService.getUserData(req.userObject?.id);
+		return res.status(200).json(response);
 	} catch (e) {
 		console.log('[ERROR][/me] ', e);
 		return res.status(500).json({ message: 'server_error' });
