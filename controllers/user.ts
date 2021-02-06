@@ -10,16 +10,16 @@ export const register = async (req: express.Request, res: express.Response) => {
 	}
 	const { name } = req.body;
 	try {
-        let response = await UserService.register(name);
-        return res.status(200).json({message: 'user_registered_successfully', ...response});
+		let response = await UserService.register(name);
+		return res.status(200).json({ message: 'user_registered_successfully', ...response });
 	} catch (e) {
-        console.log('[ERROR][/register] ', e);
-        switch (e) {
-            case 'name_already_taken':
-                return res.status(409).json({ message: e });
-            default:
-                return res.status(500).json({ message: 'server_error' });
-        }
+		console.log('[ERROR][/register] ', e);
+		switch (e) {
+			case 'name_already_taken':
+				return res.status(409).json({ message: e });
+			default:
+				return res.status(500).json({ message: 'server_error' });
+		}
 	}
 };
 
