@@ -2,9 +2,10 @@ import { QueryTypes } from 'sequelize';
 
 import sequelize from '../config/db.config';
 import { User } from '../models/models';
+import UserInterface from '../types/user.interface';
 
 export default class LeaderBoardService {
-	static async getLeaderBoard(userId: string | null) {
+	static async getLeaderBoard(user: UserInterface | undefined) {
 		try {
 			let leaders = await sequelize.query('SELECT name, points, ROW_NUMBER() OVER (ORDER BY points DESC) as place FROM users LIMIT 10', {
 				type: QueryTypes.SELECT,
@@ -12,8 +13,7 @@ export default class LeaderBoardService {
 
 			let responseObject: any = { leaders };
 
-			if (userId) {
-				let user = await User.findByPk(userId);
+			if (user) {
 				let getUserRank = await sequelize.query('SELECT COUNT(*) + 1 AS rank FROM users WHERE points > :points', {
 					replacements: { points: user?.points },
 					type: QueryTypes.SELECT,

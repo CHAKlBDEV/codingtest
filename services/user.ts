@@ -1,5 +1,6 @@
 import { User } from '../models/models';
 import jwt from 'jsonwebtoken';
+import UserInterface from '../types/user.interface';
 
 export default class UserService {
 	static async register(name: string) {
@@ -20,10 +21,9 @@ export default class UserService {
 		}
 	}
 
-	static async getUserData(userId: string) {
+	static async getUserData(user: UserInterface) {
 		try {
-			const user = await User.findOne({ where: { id: userId }, attributes: ['name', 'points'] });
-			return { name: user?.name, points: user?.points };
+			return { name: user.name, points: user.points };
 		} catch (e) {
 			console.log('[ERROR][UserService][getUserData] ', e);
 			throw e;

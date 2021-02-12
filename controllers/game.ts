@@ -1,10 +1,11 @@
 import express from 'express';
 
 import GameService from '../services/game';
+import UserInterface from '../types/user.interface';
 
 export const play = async (req: express.Request, res: express.Response) => {
 	try {
-		let response = await GameService.play(req.userObject?.id);
+		let response = await GameService.play(req.userObject as UserInterface);
 		return res.status(200).json(response);
 	} catch (e) {
 		console.log('[ERROR][/game/play] ', e);
@@ -19,7 +20,7 @@ export const play = async (req: express.Request, res: express.Response) => {
 
 export const claimBonus = async (req: express.Request, res: express.Response) => {
 	try {
-		let response = await GameService.claimBonus(req.userObject?.id);
+		let response = await GameService.claimBonus(req.userObject as UserInterface);
 		return res.status(200).json(response);
 	} catch (e) {
 		console.log('[ERROR][/game/claim_bonus] ', e);

@@ -2,6 +2,7 @@ import express from 'express';
 import { validationResult } from 'express-validator';
 
 import UserService from '../services/user';
+import UserInterface from '../types/user.interface';
 
 export const register = async (req: express.Request, res: express.Response) => {
 	const errors = validationResult(req);
@@ -25,7 +26,7 @@ export const register = async (req: express.Request, res: express.Response) => {
 
 export const me = async (req: express.Request, res: express.Response) => {
 	try {
-		let response = await UserService.getUserData(req.userObject?.id);
+		let response = await UserService.getUserData(req.userObject as UserInterface);
 		return res.status(200).json(response);
 	} catch (e) {
 		console.log('[ERROR][/me] ', e);
