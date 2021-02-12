@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 
 import { User } from '../models/models';
+import sequelize from '../config/db.config';
 import UserInterface from '../types/user.interface';
 
 export default class GameService {
@@ -10,7 +11,7 @@ export default class GameService {
 			const currentHourSig = dayjs().format('YYYY-MM-DD-HH');
 
 			if (lastGameHourSig === currentHourSig) {
-				if (user?.gamesPlayedLastHour && user?.gamesPlayedLastHour >= 5) {
+				if (user.gamesPlayedLastHour && user.gamesPlayedLastHour >= 5) {
 					throw 'limit_exceeded';
 				} else {
 					await User.increment('gamesPlayedLastHour', { by: 1, where: { id: user.id } });
@@ -21,10 +22,15 @@ export default class GameService {
 
 			const pointsToAdd = Math.floor(Math.random() * 100);
 
-			await User.increment('points', { by: pointsToAdd, where: { id: user.id } });
-			await User.update({ lastGame: Date.now() }, { where: { id: user.id } });
+			await sequelize.query('UPDATE users SET points = points + :pointsToAdd, lastGame = :now WHERE id = :id', {
+				replacements: {
+					pointsToAdd: pointsToAdd,
+					now: dayjs().format('YYYY-MM-DD HH:mm:ss.SSS Z'),
+					id: user.id,
+				},
+			});
 
-			return { points_added: pointsToAdd, points_total: (user?.points as number) + pointsToAdd };
+			return { points_added: pointsToAdd, points_total: user.points + pointsToAdd };
 		} catch (e) {
 			console.log('[ERROR][GameService][play] ', e);
 			throw e;
@@ -34,12 +40,17 @@ export default class GameService {
 	static async claimBonus(user: UserInterface) {
 		try {
 			const lastClaim = user.lastClaim;
-			const pointsAllowed = dayjs(lastClaim).diff(dayjs(), 'minutes', false) * -10;
+			const pointsAllowed = Math.abs(dayjs().diff(dayjs(lastClaim), 'minutes', false) * 10);
 			const pointsToAdd = Math.min(100, pointsAllowed);
 
 			if (pointsToAdd > 0) {
-				await User.increment('points', { by: pointsToAdd, where: { id: user.id } });
-				await User.update({ lastClaim: Date.now() }, { where: { id: user.id } });
+				await sequelize.query('UPDATE users SET points = points + :pointsToAdd, lastClaim = :now WHERE id = :id', {
+					replacements: {
+						pointsToAdd: pointsToAdd,
+						now: dayjs().format('YYYY-MM-DD HH:mm:ss.SSS Z'),
+						id: user.id,
+					},
+				});
 			}
 
 			return { points_added: pointsToAdd, points_total: user.points + pointsToAdd };
