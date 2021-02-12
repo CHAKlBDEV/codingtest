@@ -14,11 +14,11 @@ export default class LeaderBoardService {
 			let responseObject: any = { leaders };
 
 			if (user) {
-				let getUserRank = await sequelize.query('SELECT COUNT(*) + 1 AS rank FROM users WHERE points > :points', {
+				let getUserRank = await sequelize.query<{rank: number}>('SELECT COUNT(*) + 1 AS rank FROM users WHERE points > :points', {
 					replacements: { points: user?.points },
 					type: QueryTypes.SELECT,
 				});
-				responseObject.current_user_place = (getUserRank as any)[0].rank;
+				responseObject.current_user_place = getUserRank[0].rank;
 			}
 
 			return responseObject;
