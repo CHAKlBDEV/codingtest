@@ -14,23 +14,20 @@ export default class GameService {
 				if (user.gamesPlayedLastHour && user.gamesPlayedLastHour >= 5) {
 					throw 'limit_exceeded';
 				} else {
-					await User.increment('gamesPlayedLastHour', { by: 1, where: { id: user.id } });
+					user.gamesPlayedLastHour++;
 				}
 			} else {
-				await User.update({ gamesPlayedLastHour: 1 }, { where: { id: user.id } });
+				user.gamesPlayedLastHour = 1;
 			}
 
 			const pointsToAdd = Math.floor(Math.random() * 100);
 
-			await sequelize.query('UPDATE users SET points = points + :pointsToAdd, lastGame = :now WHERE id = :id', {
-				replacements: {
-					pointsToAdd: pointsToAdd,
-					now: dayjs().format('YYYY-MM-DD HH:mm:ss.SSS Z'),
-					id: user.id,
-				},
-			});
+			user.points += pointsToAdd;
+			user.lastGame = new Date();
 
-			return { points_added: pointsToAdd, points_total: user.points + pointsToAdd };
+			await User.update({ gamesPlayedLastHour: user.gamesPlayedLastHour, points: user.points, lastGame: user.lastGame }, { where: { id: user.id } });
+
+			return { points_added: pointsToAdd, points_total: user.points };
 		} catch (e) {
 			console.log('[ERROR][GameService][play] ', e);
 			throw e;
@@ -39,8 +36,7 @@ export default class GameService {
 
 	static async claimBonus(user: UserInterface) {
 		try {
-			const lastClaim = user.lastClaim;
-			const pointsAllowed = Math.abs(dayjs().diff(dayjs(lastClaim), 'minutes', false) * 10);
+			const pointsAllowed = Math.abs(dayjs().diff(dayjs(user.lastClaim), 'minutes', false)) * 10;
 			const pointsToAdd = Math.min(100, pointsAllowed);
 
 			if (pointsToAdd > 0) {
